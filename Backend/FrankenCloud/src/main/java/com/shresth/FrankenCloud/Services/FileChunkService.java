@@ -1,0 +1,62 @@
+package com.shresth.FrankenCloud.Services;
+
+import com.shresth.FrankenCloud.Config.Exceptions.*;
+import com.shresth.FrankenCloud.DTO.RegisterChunkDTO;
+import com.shresth.FrankenCloud.Entity.Enum.ChunkStatus;
+import com.shresth.FrankenCloud.Entity.FileChunk;
+import com.shresth.FrankenCloud.Entity.Files;
+import com.shresth.FrankenCloud.Repositories.FileChunkRepository;
+import com.shresth.FrankenCloud.Repositories.FileRepository;
+import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+public class FileChunkService {
+
+    @Autowired
+    private FileChunkRepository fileChunkRepository;
+
+    @Autowired
+    private FileRepository fileRepository;
+
+
+    @Transactional
+    public List<FileChunk> registerChunks(List<RegisterChunkDTO> chunkDTOS, ObjectId fileId, ObjectId userId) {
+        Files file = fileRepository.getFilesById(fileId);
+        if (file == null) {
+            throw new RuntimeException("File not found");
+        }
+        if(!file.getUserId().equals(userId)) {
+            throw new UnauthorizedAccessException();
+        }
+        List<FileChunk> chunks = chunkDTOS.stream().map(dto -> {
+            FileChunk chunk = new FileChunk();
+            chunk.setFileId(fileId);
+            chunk.setAccountId(dto.getAccountId());
+            chunk.setChunkIndex(dto.getChunkIndex());
+            chunk.setSegmentName(dto.getSegmentName());
+            chunk.setIsParity(dto.getIsParity());
+            chunk.setChunkSize(dto.getChunkSize());
+            chunk.setDriveFileId(dto.getDriveFileId());
+            chunk.setHash(dto.getHash());
+            chunk.setStatus(ChunkStatus.HEALTHY);
+            return chunk;
+        }).toList();
+
+        return fileChunkRepository.saveAll(chunks);
+    }
+
+    public List<FileChunk> getFileChunksByFileId(ObjectId fileId, ObjectId userId) {
+        Files file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+
+        if (!file.getUserId().equals(userId)) {
+            throw new UnauthorizedAccessException();
+        }
+        return fileChunkRepository.findByFileIdOrderByChunkIndexAsc(fileId);
+    }
+}
