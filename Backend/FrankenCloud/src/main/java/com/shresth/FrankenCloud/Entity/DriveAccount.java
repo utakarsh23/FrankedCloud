@@ -8,26 +8,21 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "drive_accounts")
-public class DriveAccounts {
+public class DriveAccount {
 
     @Id
-    private ObjectId id;
-
-    @JsonIgnore
-    private ObjectId userId;
+    private ObjectId driveId;
 
     private String accountId;
-
+    private ObjectId userId;
     private String googleEmail;
-    private String refreshToken;
+    private String refreshToken; //encrypted
     private Long usedSpace;
     private Long remainingSpace;
     private Boolean isActive;

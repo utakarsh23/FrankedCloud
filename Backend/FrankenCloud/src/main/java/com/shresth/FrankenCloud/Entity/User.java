@@ -1,5 +1,6 @@
 package com.shresth.FrankenCloud.Entity;
 
+import com.shresth.FrankenCloud.DTO.Storage;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,6 +24,7 @@ public class User {
     private String email;
     private String password; //hashed
     private Boolean deleted = false;
+    private Storage storage;
 
     @CreatedDate
     private Date createdAt;

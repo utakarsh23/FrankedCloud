@@ -33,7 +33,7 @@ public class FileService {
     public Files createUploadMetadata(ObjectId userId, ObjectId parentFolderId, String fileName, String userMail, Long fileSize) {
         ObjectId fileId = new ObjectId();
 
-        long accessibleDrives = driveService.getDriveAccounts(userId, true).size();
+        long accessibleDrives = driveService.getDriveAccounts(userId, true, true).size();
         if (accessibleDrives == 0) {
             throw new DriveNotFoundException();
         }
