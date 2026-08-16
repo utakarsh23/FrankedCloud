@@ -70,4 +70,8 @@ public class FileChunkService {
         chunk.setHash(saveChunkDTO.getHash());
         return fileChunkRepository.save(chunk);
     }
+
+    public List<FileChunk> saveAllFileChunks(List<FileChunk> fileChunks) {
+        return fileChunkRepository.saveAll(fileChunks);
+    }
 }

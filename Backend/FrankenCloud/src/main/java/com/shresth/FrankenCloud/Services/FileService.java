@@ -101,6 +101,7 @@ public class FileService {
         List<FileChunk> fileChunks = new ArrayList<>();
 
         fileToChunkAndResponse(fileChunks, responses, driveAccounts, file);
+        fileChunkService.saveAllFileChunks(fileChunks);
 //        frontend will send four things, chunk status, driveFileId(the drive url) and chunk hash
         return responses;
     }
@@ -166,10 +167,12 @@ public class FileService {
         long targetShardSize = (long) Math.ceil((double) file.getFileSize() / file.getShards());
 
         for(int i = 0; i < totalShards; i++) {
+            ObjectId chunkId = new ObjectId();
 
             //adding to the response
             FileChunkResponse res = new FileChunkResponse();
             String segmentName = file.getId().toHexString() + (i < file.getShards() ? "__chunk_" : "__parity__chunk_") + i;
+            res.setChunkId(chunkId);
             res.setFileId(file.getId());
             res.setAccountId(driveAccounts.get(i % driveAccounts.size()).getAccountId());
             res.setEncryptionKey(file.getEncryptionKey()); //this will go to frontend for enc
@@ -184,6 +187,7 @@ public class FileService {
 
             //adding to the chunk for db
             FileChunk fileChunk = new FileChunk();
+            fileChunk.setId(chunkId);
             fileChunk.setChunkSize(targetShardSize);
             fileChunk.setChunkIndex((long) i);
             fileChunk.setFileId(file.getId());
@@ -195,10 +199,13 @@ public class FileService {
         }
     }
 
-    public FileDownloadManifestResponse getFileMetadata(ObjectId fileId) {
+    public FileDownloadManifestResponse getFileMetadata(ObjectId fileId, ObjectId userId) {
         Files file = getFile(fileId);
         if (file == null) {
             throw new FileNotFoundException("File not found");
+        }
+        if (!file.getUserId().equals(userId)) {
+            throw new UnauthorizedAccessException();
         }
         List<FileChunk> fileChunks = fileChunkService.getFileChunksByFileId(fileId);
         if (fileChunks.isEmpty()) {

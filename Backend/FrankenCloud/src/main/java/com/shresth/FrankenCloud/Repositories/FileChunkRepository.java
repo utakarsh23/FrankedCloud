@@ -15,5 +15,5 @@ public interface FileChunkRepository extends MongoRepository<FileChunk, ObjectId
     List<FileChunk> findByFileId(ObjectId fileId);
 
     // Find chunks belonging to a specific drive account (useful for health checks)
-    List<FileChunk> findByAccountId(ObjectId accountId);
+    List<FileChunk> findByAccountId(String accountId);
 }

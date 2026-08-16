@@ -2,6 +2,7 @@ package com.shresth.FrankenCloud.Services;
 
 import com.shresth.FrankenCloud.DTO.GoogleTokenResponse;
 import com.shresth.FrankenCloud.Entity.DriveAccount;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -19,16 +20,23 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class GoogleAuthService {
 
-    @Value("${google.client.id}")
+    @Autowired
+    private final EncryptionService encryptionService;
+
+    @Value("${google.drive.client-id}")
     private String clientId;
 
-    @Value("${google.client.secret}")
+    @Value("${google.drive.client-secret}")
     private String clientSecret;
 
     private final RestTemplate restTemplate = new RestTemplate();
     
     // In-memory token cache: accountId -> CachedToken
     private final Map<String, CachedToken> tokenCache = new ConcurrentHashMap<>();
+
+    public GoogleAuthService(EncryptionService encryptionService) {
+        this.encryptionService = encryptionService;
+    }
 
     private record CachedToken(String accessToken, Instant expiresAt) {}
 
@@ -40,7 +48,10 @@ public class GoogleAuthService {
             return cached.accessToken();
         }
 
-        String newAccessToken = refreshAccessToken(driveAccount.getRefreshToken());
+
+        String refreshToken = encryptionService.decryptInput(driveAccount.getRefreshToken());
+
+        String newAccessToken = refreshAccessToken(refreshToken);
         tokenCache.put(accountId, new CachedToken(newAccessToken, Instant.now().plusSeconds(3600)));
 
         return newAccessToken;

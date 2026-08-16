@@ -10,7 +10,7 @@ import org.bson.types.ObjectId;
 @AllArgsConstructor
 public class FileChunkResponse {
 
-
+    private ObjectId chunkId;
     private ObjectId fileId;
     private String accountId;
     private Long chunkIndex;

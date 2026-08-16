@@ -1,6 +1,5 @@
 package com.shresth.FrankenCloud.Controllers;
 
-import com.shresth.FrankenCloud.DTO.RegisterChunkDTO;
 import com.shresth.FrankenCloud.DTO.SaveChunkDTO;
 import com.shresth.FrankenCloud.Entity.FileChunk;
 import com.shresth.FrankenCloud.Entity.User;

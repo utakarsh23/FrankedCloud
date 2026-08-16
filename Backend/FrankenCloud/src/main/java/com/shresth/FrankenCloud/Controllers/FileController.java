@@ -46,7 +46,7 @@ public class FileController {
     public ResponseEntity<?> fileMetadata(@PathVariable ObjectId fileId,
                                           @AuthenticationPrincipal UserPrincipal currentUser) {
 
-        FileDownloadManifestResponse fileMetadata = fileService.getFileMetadata(fileId);
+        FileDownloadManifestResponse fileMetadata = fileService.getFileMetadata(fileId, currentUser.getId());
         return new ResponseEntity<>(fileMetadata, HttpStatus.OK);
     }
 

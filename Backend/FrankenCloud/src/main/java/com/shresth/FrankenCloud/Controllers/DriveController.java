@@ -21,7 +21,7 @@ public class DriveController {
     private DriveService driveService;
 
     @PostMapping("/link")
-    private ResponseEntity<?> linkStorage(@AuthenticationPrincipal UserPrincipal currentUser, @RequestBody String authCode) throws IOException {
+    public ResponseEntity<?> linkStorage(@AuthenticationPrincipal UserPrincipal currentUser, @RequestBody String authCode) throws IOException {
         ObjectId userId = currentUser.getId();
         DriveAccount driveAccount = driveService.linkDrive(userId, authCode);
         return new ResponseEntity<>(driveAccount, HttpStatus.OK);
@@ -29,14 +29,14 @@ public class DriveController {
 
     //usable storage are the ones that can be used for storing data at T.now() time.
     @GetMapping("/usable")
-    private ResponseEntity<?> listUsableStorage(@AuthenticationPrincipal UserPrincipal currentUser) {
+    public ResponseEntity<?> listUsableStorage(@AuthenticationPrincipal UserPrincipal currentUser) {
         ObjectId userId = currentUser.getId();
         return new ResponseEntity<>(driveService.getDriveAccounts(userId, true, true), HttpStatus.OK);
     }
 
     //active storage are the ones that are active at T.now() time, inclusive of unusable drives.
     @GetMapping("/accounts")
-    private ResponseEntity<?> listActiveStorage(@AuthenticationPrincipal UserPrincipal currentUser) {
+    public ResponseEntity<?> listActiveStorage(@AuthenticationPrincipal UserPrincipal currentUser) {
         ObjectId userId = currentUser.getId();
         return new ResponseEntity<>(driveService.getDriveAccounts(userId, true), HttpStatus.OK);
     }
@@ -44,8 +44,8 @@ public class DriveController {
 
 
     @PutMapping("/delete/{account_id}")
-    private ResponseEntity<?> deleteAccount(@AuthenticationPrincipal UserPrincipal currentUser, @PathVariable String account_id) {
-        DriveAccount driveAccount = driveService.toggleDriveAccount(account_id);
+    public ResponseEntity<?> deleteAccount(@AuthenticationPrincipal UserPrincipal currentUser, @PathVariable String account_id) {
+        DriveAccount driveAccount = driveService.toggleDriveAccount(currentUser.getId(), account_id);
         return new ResponseEntity<>(driveAccount, HttpStatus.OK);
     }
 

@@ -18,6 +18,7 @@ import com.shresth.FrankenCloud.Entity.FileChunk;
 import com.shresth.FrankenCloud.Entity.User;
 import com.shresth.FrankenCloud.Repositories.DriveRepository;
 import com.shresth.FrankenCloud.Repositories.UserRepository;
+import com.shresth.FrankenCloud.Config.Exceptions.*;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -232,10 +233,13 @@ public class DriveService {
         return driveRepository.save(driveAccount);
     }
 
-    public DriveAccount toggleDriveAccount(String account_id) {
+    public DriveAccount toggleDriveAccount(ObjectId userId, String account_id) {
         DriveAccount driveAccount = driveRepository.getDriveAccountByAccountId(account_id);
         if (driveAccount == null) {
             throw new NoSuchElementException("Drive account not found.");
+        }
+        if (!driveAccount.getUserId().equals(userId)) {
+            throw new UnauthorizedAccessException();
         }
         driveAccount.setIsActive(!driveAccount.getIsActive());
         return driveRepository.save(driveAccount);
