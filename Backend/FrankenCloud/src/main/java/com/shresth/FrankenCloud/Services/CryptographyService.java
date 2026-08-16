@@ -13,10 +13,11 @@ import java.util.Base64;
 public class CryptographyService {
 
     private static final int SALT_LENGTH_BYTES = 16;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     public String generateSalt() {
         byte[] salt = new byte[SALT_LENGTH_BYTES];
-        new SecureRandom().nextBytes(salt);
+        secureRandom.nextBytes(salt);
         return Base64.getEncoder().encodeToString(salt);
     }
 
@@ -40,5 +41,10 @@ public class CryptographyService {
         }
     }
 
+    public String generateIV() {
+        byte[] iv = new byte[16]; // 16 bytes = 128 bits
+        secureRandom.nextBytes(iv);
+        return Base64.getEncoder().encodeToString(iv);
+    }
 
 }

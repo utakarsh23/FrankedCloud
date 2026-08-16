@@ -9,6 +9,7 @@ import com.shresth.FrankenCloud.Repositories.FileChunkRepository;
 import com.shresth.FrankenCloud.Repositories.FileRepository;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,18 +46,23 @@ public class FileChunkService {
             chunk.setHash(dto.getHash());
             chunk.setStatus(ChunkStatus.HEALTHY);
             return chunk;
+//            private ObjectId accountId; //
+//            private Long chunkIndex;
+//            private String segmentName; //
+//            private Boolean isParity;
+//            private Long chunkSize; //
+//            private String driveFileId;
+//            private String hash;
         }).toList();
 
         return fileChunkRepository.saveAll(chunks);
     }
 
-    public List<FileChunk> getFileChunksByFileId(ObjectId fileId, ObjectId userId) {
-        Files file = fileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("File not found"));
-
-        if (!file.getUserId().equals(userId)) {
-            throw new UnauthorizedAccessException();
-        }
+    public List<FileChunk> getFileChunksByFileId(ObjectId fileId) {
         return fileChunkRepository.findByFileIdOrderByChunkIndexAsc(fileId);
+    }
+
+    public FileChunk getFileChunkById(ObjectId chunkId) {
+        return fileChunkRepository.findById(chunkId).orElseThrow(() -> new FileNotFoundException("File not found"));
     }
 }

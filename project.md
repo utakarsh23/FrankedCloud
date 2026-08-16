@@ -495,7 +495,7 @@ Plaintext
 ---
 
 ## 6. Updated Resume Reference
-
+ 
 ```text
 PROJECTS
 __________________________________________________________________________________________
@@ -511,3 +511,5 @@ Spring Boot 3, Java 21, MongoDB, JavaReedSolomon, Redis, OAuth 2.0, Resilience4j
 • Integrated Resilience4j circuit breakers and Redis distributed locks (Redlock) to eliminate race conditions and gracefully manage 429 API rate limits.
 
 ```
+
+//for video files we'll use RS and will use streaming. and AES-CTR algo.

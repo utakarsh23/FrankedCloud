@@ -35,7 +35,7 @@ public class FileChunkController {
     @GetMapping("/{fileId}")
     public ResponseEntity<?> getFileChunk(@PathVariable ObjectId fileId,
                                           @AuthenticationPrincipal UserPrincipal currentUser) {
-        List<FileChunk> fileChunksByFileId = fileChunkService.getFileChunksByFileId(fileId, currentUser.getId());
+        List<FileChunk> fileChunksByFileId = fileChunkService.getFileChunksByFileId(fileId);
         return ResponseEntity.ok(fileChunksByFileId);
     }
 

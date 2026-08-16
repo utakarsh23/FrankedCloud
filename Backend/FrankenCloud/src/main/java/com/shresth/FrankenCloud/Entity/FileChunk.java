@@ -21,7 +21,7 @@ public class FileChunk {
     @Id
     private ObjectId id;
     private ObjectId fileId;
-    private ObjectId accountId;
+    private String accountId;
     private Long chunkIndex;
     private String segmentName;
     private Boolean isParity;

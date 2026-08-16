@@ -3,15 +3,18 @@ package com.shresth.FrankenCloud.Services;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeTokenRequest;
 import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
+import com.google.api.client.http.*;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.About;
+import com.google.api.services.drive.model.File;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.UserCredentials;
 import com.shresth.FrankenCloud.Entity.DriveAccount;
 import com.shresth.FrankenCloud.DTO.Storage;
+import com.shresth.FrankenCloud.Entity.FileChunk;
 import com.shresth.FrankenCloud.Entity.User;
 import com.shresth.FrankenCloud.Repositories.DriveRepository;
 import com.shresth.FrankenCloud.Repositories.UserRepository;
@@ -21,13 +24,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @Service
 public class DriveService {
-
 
 
     @Value("${google.drive.client-id}")
@@ -116,7 +121,7 @@ public class DriveService {
         long remainingSpace = Math.max(0L, limitBytes - usedSpace);
 
         DriveAccount driveAccount = driveRepository.getDriveAccountByAccountId(googleAccountId);
-        if(driveAccount != null && driveAccount.getIsActive()) {
+        if (driveAccount != null && driveAccount.getIsActive()) {
             throw new FileAlreadyExistsException("Google Drive account is already linked and active.");
         }
 
@@ -131,7 +136,7 @@ public class DriveService {
 
 
         User user = userRepository.findUserById(userId);
-        if(user == null) {
+        if (user == null) {
             throw new NoSuchElementException("User not found.");
         }
 
@@ -187,39 +192,39 @@ public class DriveService {
     }
 
     public DriveAccount updateDriveAccount(DriveAccount driveAccount) throws IOException {
-            Storage newStorage = getAccountSpecs(driveAccount);
+        Storage newStorage = getAccountSpecs(driveAccount);
 
-            long oldRemaining = driveAccount.getRemainingSpace();
-            long oldUsed = driveAccount.getUsedSpace();
-            long oldTotalCapacity = oldRemaining + oldUsed;
+        long oldRemaining = driveAccount.getRemainingSpace();
+        long oldUsed = driveAccount.getUsedSpace();
+        long oldTotalCapacity = oldRemaining + oldUsed;
 
-            long newRemaining = newStorage.getRemainingStorage();
-            long newUsed = newStorage.getUsedStorage();
-            long newTotalCapacity = newStorage.getStorageSize();
+        long newRemaining = newStorage.getRemainingStorage();
+        long newUsed = newStorage.getUsedStorage();
+        long newTotalCapacity = newStorage.getStorageSize();
 
-            long deltaRemaining = newRemaining - oldRemaining;
-            long deltaTotalCapacity = newTotalCapacity - oldTotalCapacity;
-            long deltaUsed = newUsed - oldUsed;
+        long deltaRemaining = newRemaining - oldRemaining;
+        long deltaTotalCapacity = newTotalCapacity - oldTotalCapacity;
+        long deltaUsed = newUsed - oldUsed;
 
-            // Skip saving if nothing changed on Google Drive
-            if (deltaRemaining == 0 && deltaTotalCapacity == 0 && deltaUsed == 0) {
-                return driveAccount;
-            }
+        // Skip saving if nothing changed on Google Drive
+        if (deltaRemaining == 0 && deltaTotalCapacity == 0 && deltaUsed == 0) {
+            return driveAccount;
+        }
 
-            driveAccount.setRemainingSpace(newRemaining);
-            driveAccount.setUsedSpace(newUsed);
-            driveAccount.setIsActive(true);
+        driveAccount.setRemainingSpace(newRemaining);
+        driveAccount.setUsedSpace(newUsed);
+        driveAccount.setIsActive(true);
 
-            User user = userRepository.findUserById(driveAccount.getUserId());
-            if (user != null && user.getStorage() != null) {
-                Storage userStorage = user.getStorage();
-                userStorage.setRemainingStorage(userStorage.getRemainingStorage() + deltaRemaining);
-                userStorage.setStorageSize(userStorage.getStorageSize() + deltaTotalCapacity);
-                userStorage.setUsedStorage(userStorage.getUsedStorage() + deltaUsed);
-                userRepository.save(user);
-            }
+        User user = userRepository.findUserById(driveAccount.getUserId());
+        if (user != null && user.getStorage() != null) {
+            Storage userStorage = user.getStorage();
+            userStorage.setRemainingStorage(userStorage.getRemainingStorage() + deltaRemaining);
+            userStorage.setStorageSize(userStorage.getStorageSize() + deltaTotalCapacity);
+            userStorage.setUsedStorage(userStorage.getUsedStorage() + deltaUsed);
+            userRepository.save(user);
+        }
 
-            return driveRepository.save(driveAccount);
+        return driveRepository.save(driveAccount);
     }
 
     public DriveAccount toggleDriveAccount(String account_id) {
@@ -230,4 +235,32 @@ public class DriveService {
         driveAccount.setIsActive(!driveAccount.getIsActive());
         return driveRepository.save(driveAccount);
     }
+
+    public String generateUploadURI(DriveAccount driveAccount, String chunkName) throws IOException {
+        Drive frankenCloud = getDriveClient(driveAccount);
+        File fileMetadata = new File(); //this is google file, com.google.api.services.drive.model.File fileMetadata = new com.google.api.services.drive.model.File();
+        fileMetadata.setName(chunkName);
+        GenericUrl url = new GenericUrl("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable");
+        String metadata = frankenCloud.getJsonFactory().toString(fileMetadata);
+        HttpContent content = new ByteArrayContent("application/json; charset=UTF-8", metadata.getBytes(StandardCharsets.UTF_8));
+
+        HttpRequest request = frankenCloud.getRequestFactory().buildRequest("POST", url, content);
+        request.getHeaders().set("X-Upload-Content-Type", "application/octet-stream");
+
+        HttpResponse response = request.execute();
+        String uploadURI = response.getHeaders().getLocation();
+        if (uploadURI == null || uploadURI.isEmpty()) {
+            throw new IOException("Failed to obtain resumable upload URL from Google Drive.");
+        }
+        return uploadURI;
+    }
+
+//    public Map<String, String> generateUploadURI(List<DriveAccount> driveAccounts) {
+//        Map<String, String> uploadURIs = new HashMap<>();
+//        driveAccounts.forEach(
+//                driveAccount -> uploadURIs.put(driveAccount.getAccountId(), generateUploadURI(driveAccount))
+//        );
+//        return uploadURIs;
+//    }
+
 }
