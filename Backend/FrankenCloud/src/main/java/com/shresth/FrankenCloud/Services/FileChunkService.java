@@ -1,14 +1,17 @@
 package com.shresth.FrankenCloud.Services;
 
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.shresth.FrankenCloud.Config.Exceptions.*;
 //import com.shresth.FrankenCloud.DTO.RegisterChunkDTO;
 import com.shresth.FrankenCloud.DTO.SaveChunkDTO;
+import com.shresth.FrankenCloud.Entity.DriveAccount;
 import com.shresth.FrankenCloud.Entity.FileChunk;
 import com.shresth.FrankenCloud.Repositories.FileChunkRepository;
 import com.shresth.FrankenCloud.Repositories.FileRepository;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -20,6 +23,8 @@ public class FileChunkService {
 
     @Autowired
     private FileRepository fileRepository;
+    @Autowired
+    private DriveService driveService;
 
 
 //    @Transactional
@@ -73,5 +78,30 @@ public class FileChunkService {
 
     public List<FileChunk> saveAllFileChunks(List<FileChunk> fileChunks) {
         return fileChunkRepository.saveAll(fileChunks);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteFileChunk(ObjectId chunkId) throws Exception {
+        FileChunk chunk = getFileChunkById(chunkId);
+        if (chunk == null) {
+            return;
+        }
+
+        if (chunk.getDriveFileId() != null) {
+            try {
+                DriveAccount driveAccount = driveService.getDriveAccountByAccountId(chunk.getAccountId());
+                driveService.deleteFromDrive(driveAccount, chunk.getDriveFileId());
+            } catch (GoogleJsonResponseException e) {
+                // 404 means already deleted on Drive — safe to ignore and proceed to DB delete
+                if (e.getStatusCode() != 404) {
+                    throw new Exception("Google Drive API error on chunk deletion: " + e.getMessage(), e);
+                }
+            } catch (Exception e) {
+                // Network timeout or bad auth — throw so transaction aborts
+                throw new Exception("Failed to delete chunk from Google Drive: " + e.getMessage(), e);
+            }
+        }
+        // Only deleted from MongoDB if Google Drive call succeeded or returned 404
+        fileChunkRepository.delete(chunk);
     }
 }

@@ -61,6 +61,14 @@ public class DriveService {
     @Autowired
     private GoogleAuthService googleAuthService;
 
+    public DriveAccount getDriveAccountByAccountId(String accountId) {
+        DriveAccount driveAccount = driveRepository.getDriveAccountByAccountId(accountId);
+        if (driveAccount == null) {
+            throw new NoSuchElementException("Drive account not found.");
+        }
+        return driveAccount;
+    }
+
     public List<DriveAccount> getDriveAccounts(ObjectId userId) {
         return driveRepository.findDriveAccountsByUserId(userId);
     }
@@ -72,7 +80,6 @@ public class DriveService {
     public List<DriveAccount> getDriveAccounts(ObjectId userId, Boolean activeStatus, Boolean isUsable) {
         // rem space by def should be greater than 1GB
         // this fetched the drives that are for the user and fetches only to be used drives.
-
         return driveRepository.findDriveAccountsByUserIdAndIsActiveAndRemainingSpaceGreaterThanEqual(userId, activeStatus, minRemainingSpace);
     }
 
@@ -274,22 +281,14 @@ public class DriveService {
                 .toUriString();
     }
 
-//      response.setAccessToken(driveService.getAccessTokenForDriveAccount(fileChunk.getAccountId()));
-
     public String generateAccessToken(String accountId) throws IOException {
         DriveAccount driveAccount = driveRepository.getDriveAccountByAccountId(accountId);
         return googleAuthService.getValidAccessToken(driveAccount);
     }
 
-
-
-
-//    public Map<String, String> generateUploadURI(List<DriveAccount> driveAccounts) {
-//        Map<String, String> uploadURIs = new HashMap<>();
-//        driveAccounts.forEach(
-//                driveAccount -> uploadURIs.put(driveAccount.getAccountId(), generateUploadURI(driveAccount))
-//        );
-//        return uploadURIs;
-//    }
+    public void deleteFromDrive(DriveAccount driveAccount, String driveFileId) throws IOException {
+        Drive frankenCloud = getDriveClient(driveAccount);
+        frankenCloud.files().delete(driveFileId).execute();
+    }
 
 }

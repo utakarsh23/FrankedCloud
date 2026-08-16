@@ -16,7 +16,9 @@ import com.shresth.FrankenCloud.Entity.Files;
 import com.shresth.FrankenCloud.Repositories.FileRepository;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -261,4 +263,34 @@ public class FileService {
         return response;
     }
 
+    @Async
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteFile(ObjectId fileId, ObjectId userId) throws Exception {
+        Files file = getFile(fileId);
+        if (file == null) {
+            throw new FileNotFoundException("File not found");
+        }
+        if (!file.getUserId().equals(userId)) {
+            throw new UnauthorizedAccessException();
+        }
+
+        List<FileChunk> fileChunks = fileChunkService.getFileChunksByFileId(fileId);
+
+        // Run parallel chunk deletions and track success status
+        boolean allChunksDeleted = fileChunks.parallelStream().map(chunk -> {
+            try {
+                fileChunkService.deleteFileChunk(chunk.getId());
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }).reduce(true, (a, b) -> a && b);
+
+        // If even one chunk failed, abort so the parent File record is NOT deleted
+        if (!allChunksDeleted) {
+            throw new RuntimeException("One or more chunks failed to delete from Google Drive. Transaction rolled back for retry.");
+        }
+
+        fileRepository.delete(file);
+    }
 }
