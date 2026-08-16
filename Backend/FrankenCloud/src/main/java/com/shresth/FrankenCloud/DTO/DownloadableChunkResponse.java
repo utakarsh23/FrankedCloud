@@ -15,9 +15,8 @@ public class DownloadableChunkResponse {
     private String segmentName;
     private Boolean isParity;
     private Long chunkSize;
-    private String driveFileId;     // Google Drive File ID (e.g. "1A2b3C...")
     private String downloadUrl;     // Pre-formatted: https://www.googleapis.com/drive/v3/files/{driveFileId}?alt=media
     private String hash;
     private ChunkStatus status;
-    private String accessToken;     // Short-lived OAuth access token for this drive account
+    private String token;     // Short-lived OAuth access token for this drive account
 }

@@ -9,13 +9,12 @@ import org.bson.types.ObjectId;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class RegisterChunkDTO {
+public class SaveChunkDTO {
 
-    private String accountId;
-    private Long chunkIndex;
-    private String segmentName;
-    private Boolean isParity;
-    private Long chunkSize;
+
+    //        frontend will send four things, chunk status, driveFileId(the drive url) and chunk hash
+    private ObjectId chunkId;
+    private ChunkStatus chunkStatus;
     private String driveFileId;
     private String hash;
 }

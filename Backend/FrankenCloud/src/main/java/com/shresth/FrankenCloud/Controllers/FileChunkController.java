@@ -1,6 +1,7 @@
 package com.shresth.FrankenCloud.Controllers;
 
 import com.shresth.FrankenCloud.DTO.RegisterChunkDTO;
+import com.shresth.FrankenCloud.DTO.SaveChunkDTO;
 import com.shresth.FrankenCloud.Entity.FileChunk;
 import com.shresth.FrankenCloud.Entity.User;
 import com.shresth.FrankenCloud.Entity.UserPrincipal;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
 import java.util.List;
 
 @RestController
@@ -21,14 +23,13 @@ public class FileChunkController {
     private FileChunkService fileChunkService;
 
     @PostMapping("/upload")
-    public ResponseEntity<?> uploadChunkMetadata(@RequestBody List<RegisterChunkDTO> registerChunkDTO,
+    public ResponseEntity<?> uploadChunkMetadata(@RequestBody SaveChunkDTO saveChunkDTO,
                                                   @RequestParam ObjectId fileId,
                                                   @AuthenticationPrincipal UserPrincipal currentUser) {
 
-        ObjectId userId = currentUser.getId();
-        List<FileChunk> chunks = fileChunkService.registerChunks(registerChunkDTO, fileId, userId);
-
-        return ResponseEntity.ok(chunks);
+        //we'll be saving this for each saving, so we do not lose the process
+        FileChunk chunk = fileChunkService.registerFileChunk(saveChunkDTO);
+        return ResponseEntity.ok(chunk);
     }
 
 

@@ -4,7 +4,9 @@ package com.shresth.FrankenCloud.Services;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.shresth.FrankenCloud.Config.Exceptions.*;
+import com.shresth.FrankenCloud.DTO.DownloadableChunkResponse;
 import com.shresth.FrankenCloud.DTO.FileChunkResponse;
+import com.shresth.FrankenCloud.DTO.FileDownloadManifestResponse;
 import com.shresth.FrankenCloud.DTO.FileRequest;
 import com.shresth.FrankenCloud.Entity.DriveAccount;
 import com.shresth.FrankenCloud.Entity.Enum.ChunkStatus;
@@ -32,6 +34,9 @@ public class FileService {
 
     @Autowired
     private DriveService driveService;
+
+    @Autowired
+    private FileChunkService fileChunkService;
 
     public record UploadPreparation(Files file, List<DriveAccount> targetDrives) {}
 
@@ -190,14 +195,63 @@ public class FileService {
         }
     }
 
-//    private Long calculateParityShards(Long totalDrives, Long dataShards) {
-//        if (totalDrives == 1L) return 0L; // Single drive cannot offer parity fault tolerance
-//        else if (totalDrives == 2L) return 1L; // Mirroring (1 Data, 1 Parity)
-//        else if (totalDrives <= 8L) return totalDrives - dataShards; // Uses all remaining drives for K
-//
-//
-//        // 9+ Drives: 20% Parity (K), leaving remaining 20% as empty dynamic failover buffer
-//        return (long) Math.floor(totalDrives * 0.2);
-//    }
+    public FileDownloadManifestResponse getFileMetadata(ObjectId fileId) {
+        Files file = getFile(fileId);
+        if (file == null) {
+            throw new FileNotFoundException("File not found");
+        }
+        List<FileChunk> fileChunks = fileChunkService.getFileChunksByFileId(fileId);
+        if (fileChunks.isEmpty()) {
+            throw new FileNotFoundException("File chunks not found");
+        }
+        return setFileManifestResponse(fileChunks, file);
+    }
+
+    private Files getFile(ObjectId fileId) {
+        return fileRepository.getFilesById(fileId);
+    }
+
+    private FileDownloadManifestResponse setFileManifestResponse(List<FileChunk> fileChunks, Files file) {
+        FileDownloadManifestResponse response = new FileDownloadManifestResponse();
+        response.setFileId(file.getId());
+        response.setFileSize(file.getFileSize());
+        response.setFileType(file.getFileType());
+        response.setFileName(file.getFileName());
+        response.setDataShards(file.getShards());
+        response.setParityShards(file.getParityShards());
+        response.setEncryptionKey(file.getEncryptionKey());
+        response.setIv(file.getIv());
+
+        List<DownloadableChunkResponse> chunkResponses = new ArrayList<>();
+
+                fileChunks.forEach(
+                chunk ->  {
+                    DownloadableChunkResponse chunkResponse = null;
+                    try {
+                        chunkResponse = setChunkManifestResponse(chunk, file);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    chunkResponses.add(chunkResponse);
+                });
+
+        response.setChunks(chunkResponses);
+        return response;
+    }
+
+    private DownloadableChunkResponse setChunkManifestResponse(FileChunk fileChunk, Files file) throws IOException {
+        DownloadableChunkResponse response = new DownloadableChunkResponse();
+        response.setChunkId(fileChunk.getId());
+        response.setChunkIndex(fileChunk.getChunkIndex());
+        response.setChunkSize(fileChunk.getChunkSize());
+        response.setStatus(fileChunk.getStatus());
+        response.setSegmentName(fileChunk.getSegmentName());
+        response.setIsParity(fileChunk.getIsParity());
+        response.setDownloadUrl(driveService.generateDownloadURI(fileChunk.getDriveFileId()));
+        response.setHash(fileChunk.getHash());
+        response.setToken(driveService.generateAccessToken(fileChunk.getAccountId()));
+        return response;
+    }
 
 }

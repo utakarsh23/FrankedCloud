@@ -4,6 +4,7 @@ import com.google.api.client.json.Json;
 import com.mongodb.lang.Nullable;
 import com.shresth.FrankenCloud.Config.Exceptions.*;
 import com.shresth.FrankenCloud.DTO.FileChunkResponse;
+import com.shresth.FrankenCloud.DTO.FileDownloadManifestResponse;
 import com.shresth.FrankenCloud.DTO.FileRequest;
 import com.shresth.FrankenCloud.DTO.FolderRequest;
 import com.shresth.FrankenCloud.Entity.Files;
@@ -39,6 +40,14 @@ public class FileController {
 
         List<FileChunkResponse> chunksMetadata = fileService.getChunksMetadata(userId, parentFolderId, currentUser.getEmail(), fileRequest);
         return new ResponseEntity<>(chunksMetadata, HttpStatus.OK);
+    }
+
+    @GetMapping("/metadata/{fileId}")
+    public ResponseEntity<?> fileMetadata(@PathVariable ObjectId fileId,
+                                          @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        FileDownloadManifestResponse fileMetadata = fileService.getFileMetadata(fileId);
+        return new ResponseEntity<>(fileMetadata, HttpStatus.OK);
     }
 
 

@@ -22,6 +22,7 @@ import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -52,8 +53,12 @@ public class DriveService {
 
     @Autowired
     private DriveRepository driveRepository;
+
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private GoogleAuthService googleAuthService;
 
     public List<DriveAccount> getDriveAccounts(ObjectId userId) {
         return driveRepository.findDriveAccountsByUserId(userId);
@@ -254,6 +259,26 @@ public class DriveService {
         }
         return uploadURI;
     }
+
+    public String generateDownloadURI(String driveFileId) {
+        return UriComponentsBuilder.newInstance()
+                .scheme("https")
+                .host("www.googleapis.com")
+                .path("/drive/v3/files/{fileId}")
+                .queryParam("alt", "media")
+                .buildAndExpand(driveFileId)
+                .toUriString();
+    }
+
+//      response.setAccessToken(driveService.getAccessTokenForDriveAccount(fileChunk.getAccountId()));
+
+    public String generateAccessToken(String accountId) throws IOException {
+        DriveAccount driveAccount = driveRepository.getDriveAccountByAccountId(accountId);
+        return googleAuthService.getValidAccessToken(driveAccount);
+    }
+
+
+
 
 //    public Map<String, String> generateUploadURI(List<DriveAccount> driveAccounts) {
 //        Map<String, String> uploadURIs = new HashMap<>();
