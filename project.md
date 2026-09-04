@@ -171,6 +171,7 @@ Spring Boot acts as the **control plane, security gatekeeper, metadata coordinat
 | `GET` | `/files/directory` | List files and folders under `parentFolderId` | Yes |
 | `POST` | `/chunk/upload` | Finalize chunk upload (`SaveChunkDTO`) | Yes |
 | `GET` | `/chunk/{fileId}` | List all chunks for a given file | Yes |
+| `DELETE` | `/files/{fileId}` | Delete file/folder and all associated chunks from Google Drive & MongoDB | Yes |
 
 ---
 

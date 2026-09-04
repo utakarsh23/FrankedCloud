@@ -8,17 +8,18 @@ import com.shresth.FrankenCloud.DTO.DownloadableChunkResponse;
 import com.shresth.FrankenCloud.DTO.FileChunkResponse;
 import com.shresth.FrankenCloud.DTO.FileDownloadManifestResponse;
 import com.shresth.FrankenCloud.DTO.FileRequest;
+import com.shresth.FrankenCloud.DTO.Storage;
 import com.shresth.FrankenCloud.Entity.DriveAccount;
 import com.shresth.FrankenCloud.Entity.Enum.ChunkStatus;
 import com.shresth.FrankenCloud.Entity.Enum.FileType;
 import com.shresth.FrankenCloud.Entity.FileChunk;
 import com.shresth.FrankenCloud.Entity.Files;
+import com.shresth.FrankenCloud.Entity.User;
 import com.shresth.FrankenCloud.Repositories.FileRepository;
+import com.shresth.FrankenCloud.Repositories.UserRepository;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,6 +31,9 @@ public class FileService {
 
     @Autowired
     private FileRepository fileRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private CryptographyService cryptographyService;
@@ -263,8 +267,6 @@ public class FileService {
         return response;
     }
 
-    @Async
-    @Transactional(rollbackFor = Exception.class)
     public void deleteFile(ObjectId fileId, ObjectId userId) throws Exception {
         Files file = getFile(fileId);
         if (file == null) {
@@ -274,7 +276,20 @@ public class FileService {
             throw new UnauthorizedAccessException();
         }
 
-        List<FileChunk> fileChunks = fileChunkService.getFileChunksByFileId(fileId);
+        deleteFileOrDirectory(file, userId);
+    }
+
+    private void deleteFileOrDirectory(Files file, ObjectId userId) throws Exception {
+        if (file.getFileType() == FileType.DIRECTORY) {
+            List<Files> children = fileRepository.findByUserIdAndParentFolderId(userId, file.getId());
+            for (Files child : children) {
+                deleteFileOrDirectory(child, userId);
+            }
+            fileRepository.delete(file);
+            return;
+        }
+
+        List<FileChunk> fileChunks = fileChunkService.getFileChunksByFileId(file.getId());
 
         // Run parallel chunk deletions and track success status
         boolean allChunksDeleted = fileChunks.parallelStream().map(chunk -> {
@@ -288,9 +303,23 @@ public class FileService {
 
         // If even one chunk failed, abort so the parent File record is NOT deleted
         if (!allChunksDeleted) {
-            throw new RuntimeException("One or more chunks failed to delete from Google Drive. Transaction rolled back for retry.");
+            throw new RuntimeException("One or more chunks failed to delete from Google Drive. Aborting file deletion for retry.");
         }
 
+        reclaimUserStorage(userId, file.getFileSize());
         fileRepository.delete(file);
+    }
+
+    private void reclaimUserStorage(ObjectId userId, Long fileSize) {
+        if (fileSize == null || fileSize <= 0) return;
+        User user = userRepository.findUserById(userId);
+        if (user != null && user.getStorage() != null) {
+            Storage storage = user.getStorage();
+            long used = storage.getUsedStorage();
+            long remaining = storage.getRemainingStorage();
+            storage.setUsedStorage(Math.max(0L, used - fileSize));
+            storage.setRemainingStorage(remaining + fileSize);
+            userRepository.save(user);
+        }
     }
 }

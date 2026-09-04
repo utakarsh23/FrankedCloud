@@ -11,8 +11,6 @@ import com.shresth.FrankenCloud.Repositories.FileRepository;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 
 @Service
@@ -80,7 +78,6 @@ public class FileChunkService {
         return fileChunkRepository.saveAll(fileChunks);
     }
 
-    @Transactional(rollbackFor = Exception.class)
     public void deleteFileChunk(ObjectId chunkId) throws Exception {
         FileChunk chunk = getFileChunkById(chunkId);
         if (chunk == null) {
@@ -103,5 +100,9 @@ public class FileChunkService {
         }
         // Only deleted from MongoDB if Google Drive call succeeded or returned 404
         fileChunkRepository.delete(chunk);
+
+        if (chunk.getAccountId() != null && chunk.getChunkSize() != null) {
+            driveService.reclaimDriveStorage(chunk.getAccountId(), chunk.getChunkSize());
+        }
     }
 }

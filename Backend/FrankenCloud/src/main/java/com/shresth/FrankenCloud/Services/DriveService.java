@@ -291,4 +291,15 @@ public class DriveService {
         frankenCloud.files().delete(driveFileId).execute();
     }
 
+    public void reclaimDriveStorage(String accountId, long bytesFreed) {
+        if (bytesFreed <= 0) return;
+        DriveAccount driveAccount = driveRepository.getDriveAccountByAccountId(accountId);
+        if (driveAccount != null) {
+            long currentUsed = driveAccount.getUsedSpace() != null ? driveAccount.getUsedSpace() : 0L;
+            long currentRemaining = driveAccount.getRemainingSpace() != null ? driveAccount.getRemainingSpace() : 0L;
+            driveAccount.setUsedSpace(Math.max(0L, currentUsed - bytesFreed));
+            driveAccount.setRemainingSpace(currentRemaining + bytesFreed);
+            driveRepository.save(driveAccount);
+        }
+    }
 }

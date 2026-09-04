@@ -11,6 +11,7 @@ import com.shresth.FrankenCloud.Entity.Files;
 import com.shresth.FrankenCloud.Entity.UserPrincipal;
 import com.shresth.FrankenCloud.Services.DriveService;
 import com.shresth.FrankenCloud.Services.FileService;
+import org.apache.coyote.Response;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -70,6 +71,14 @@ public class FileController {
         List<Files> files = fileService.currentDirectoryItems(userId, parentFolderId);
         return new ResponseEntity<>(files, HttpStatus.OK);
 
+    }
+
+    @DeleteMapping("/{fileId}")
+    public ResponseEntity<?> deleteFile(@PathVariable ObjectId fileId,
+                                        @AuthenticationPrincipal UserPrincipal currentUser) throws Exception {
+        ObjectId userId = currentUser.getId();
+        fileService.deleteFile(fileId, userId);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
 }
